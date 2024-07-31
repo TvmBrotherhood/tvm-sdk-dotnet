@@ -7,7 +7,7 @@
 ## Installation
 ### NuGet package
 ```
-dotnet add package TvmSdk --version 0.0.1
+dotnet add package TvmSdk --version 1.0.0-an.2.0.2
 ```
 ## API
 [JSON schema](https://github.com/TvmGuild/tvm-sdk-dotnet/blob/main/tools/TvmSdk.ClientGenerator/api.json)
@@ -21,5 +21,6 @@ More of examples you can find in [tests](https://github.com/TvmGuild/tvm-sdk-dot
   - [ ] Blazor 
   - [ ] MAUI
 - [ ] Add more tests
+- [ ] Add dotnet standard support
 - [ ] Generate API classes automatically + TvmClient
 - [ ] Add benchmarks

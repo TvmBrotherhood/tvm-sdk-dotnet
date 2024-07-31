@@ -5,7 +5,7 @@
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
         <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
-        <Version>0.0.1</Version>
+        <Version>1.0.0-an.2.0.2</Version>
         <Authors>Viktors Cvetkovs</Authors>
         <Description>.NET Client for TVM based networks (Acki Nacki, TON, Everscale, Venom)</Description>
         <Copyright>Copyright 2024 (c)  Viktors Cvetkovs. All rights reserved.</Copyright>
