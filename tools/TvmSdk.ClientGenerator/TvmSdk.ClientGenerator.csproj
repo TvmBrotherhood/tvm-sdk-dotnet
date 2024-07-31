@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <OutputType>Exe</OutputType>
+        <TargetFramework>net9.0</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+        <LangVersion>preview</LangVersion>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <Content Include="api.json" CopyToOutputDirectory="PreserveNewest" />
+    </ItemGroup>
+    <ItemGroup>
+        <ProjectReference Include="..\..\src\TvmSdk.ApiModels\TvmSdk.ApiModels.csproj" />
+    </ItemGroup>
+    <ItemGroup>
+        <PackageReference Include="Microsoft.CodeAnalysis.Common" Version="4.11.0-2.final" />
+        <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="4.11.0-2.final" />
+        <PackageReference Include="Microsoft.CodeAnalysis.CSharp.Workspaces" Version="4.11.0-2.final" />
+    </ItemGroup>
+    
+</Project>

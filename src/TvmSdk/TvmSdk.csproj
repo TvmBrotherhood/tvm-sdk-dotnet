@@ -1,0 +1,52 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>net9.0</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+        <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+        <Version>0.0.1</Version>
+        <Authors>Viktors Cvetkovs</Authors>
+        <Description>.NET Client for TVM based networks (Acki Nacki, TON, Everscale, Venom)</Description>
+        <Copyright>Copyright 2024 (c)  Viktors Cvetkovs. All rights reserved.</Copyright>
+        <RepositoryUrl>https://github.com/TvmGuild/tvm-sdk-dotnet</RepositoryUrl>
+        <RepositoryType>git</RepositoryType>
+        <PackageTags>TVM, AckiNacki ,TON, Everscale, Ever, Venom</PackageTags>
+        <PackageLicenseUrl>https://licenses.nuget.org/LGPL-3.0-or-later</PackageLicenseUrl>
+        <Title>TvmSdk</Title>
+        <PackageProjectUrl>https://github.com/TvmGuild/tvm-sdk-dotnet</PackageProjectUrl>
+        <PackageIcon>icon.jpeg</PackageIcon>
+        <PackageReadmeFile>README.md</PackageReadmeFile>
+    </PropertyGroup>
+    
+    <ItemGroup>
+        <ProjectReference Include="..\TvmSdk.ApiModels\TvmSdk.ApiModels.csproj"/>
+    </ItemGroup>
+
+    <PropertyGroup>
+        <IsWindows Condition="'$([System.Runtime.InteropServices.RuntimeInformation]::IsOSPlatform($([System.Runtime.InteropServices.OSPlatform]::Windows)))' == 'true'">true</IsWindows>
+        <IsLinux Condition="'$([System.Runtime.InteropServices.RuntimeInformation]::IsOSPlatform($([System.Runtime.InteropServices.OSPlatform]::Linux)))' == 'true'">true</IsLinux>
+        <IsMacOS Condition="'$([System.Runtime.InteropServices.RuntimeInformation]::IsOSPlatform($([System.Runtime.InteropServices.OSPlatform]::OSX)))' == 'true'">true</IsMacOS>
+
+        <ProcessArchitecture>$([System.Runtime.InteropServices.RuntimeInformation]::ProcessArchitecture)</ProcessArchitecture>
+
+        <NativeRuntime Condition=" '$(NativeRuntime)' == '' And '$(IsWindows)' == 'true' And '$(ProcessArchitecture)' == 'X64'">win-x64</NativeRuntime>
+        <NativeRuntime Condition=" '$(NativeRuntime)' == '' And '$(IsLinux)' == 'true' And '$(ProcessArchitecture)' == 'X64'">linux-x64</NativeRuntime>
+        <NativeRuntime Condition=" '$(NativeRuntime)' == '' And '$(IsMacOS)' == 'true' And '$(ProcessArchitecture)' == 'X64'">osx-x64</NativeRuntime>
+        <NativeRuntime Condition=" '$(NativeRuntime)' == '' And '$(IsMacOS)' == 'true' And '$(ProcessArchitecture)' == 'Arm64'">osx-arm64</NativeRuntime>
+
+        <NativeLibName Condition="'$(NativeRuntime)' == 'win-x64'">tonclient.dll</NativeLibName>
+        <NativeLibName Condition="'$(NativeRuntime)' == 'linux-x64'">libtonclient.so</NativeLibName>
+        <NativeLibName Condition="'$(NativeRuntime)' == 'osx-x64' Or '$(NativeRuntime)' == 'osx-arm64'">libtonclient</NativeLibName>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <None Condition="'$(NativeRuntime)' != ''" Include="$(MSBuildThisFileDirectory)runtimes/$(NativeRuntime)/native/$(NativeLibName)">
+            <Link>$(NativeLibName)</Link>
+            <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+        </None>
+        <None Include="..\..\icon.jpeg" Pack="true" PackagePath="\" Visible="false"/>
+        <None Include="..\..\README.md" Pack="true" PackagePath="\"/>
+    </ItemGroup>
+
+</Project>
