@@ -22,13 +22,33 @@ dotnet add package TvmSdk
 
 ## API
 [JSON schema](https://github.com/TvmGuild/tvm-sdk-dotnet/blob/main/tools/TvmSdk.ClientGenerator/api.json)
-More of examples you can find in [tests](https://github.com/TvmGuild/tvm-sdk-dotnet/tree/main/tests/TvmSdk.Tests)
+## Usage examples
+### Basic usage
+```cs
+using System.Text;
+using TvmSdk;
+using TvmSdk.Modules.Crypto;
+
+using var client = new TvmClient();
+var text = "example of sha256";
+var textBase64 = Convert.ToBase64String(Encoding.UTF8.GetBytes(text));
+var result = await client.Crypto.Sha256(new ParamsOfHash
+{
+    Data = textBase64
+});
+var sha256 = result.Hash;
+
+Console.WriteLine($"SHA256 of text '{text}' is: {sha256}");
+// SHA256 of text 'example of sha256' is: 59357a7b134da94ac14e18fe2f20b0c1815786a15c4e840a29e32de1842a655b
+```
+---
+More of examples you can find in [examples](https://github.com/TvmGuild/tvm-sdk-dotnet/tree/main/examples/) and [tests](https://github.com/TvmGuild/tvm-sdk-dotnet/tree/main/tests/TvmSdk.Tests)
 
 More documentation is available [here](https://github.com/tvmlabs/tvm-sdk/blob/master/docs/SUMMARY.md)
 
 ## TODO list
 - [ ] Add usage examples
-  - [ ] Simple console application
+  - [x] Simple console application
   - [ ] Complex example with contract and network usage - DePool election transaction automatic approval (It is already developed but needs refactoring)
   - [ ] Unity in game example
   - [ ] Blazor 
