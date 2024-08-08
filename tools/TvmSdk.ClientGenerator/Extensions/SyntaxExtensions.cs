@@ -151,10 +151,6 @@ public static partial class SyntaxExtensions
                     return enumMember;
                 })
                 .ToArray());
-
-        if (properties.All(x => x.Value is null))
-            result = result.AddAttribute("JsonConverter",
-                ("JsonStringEnumConverter", "", SyntaxKind.TypeOfKeyword));
         
         return result;
     }

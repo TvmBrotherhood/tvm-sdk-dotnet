@@ -1,0 +1,37 @@
+namespace TvmSdk.AckiNacki.Modules.Crypto;
+
+public enum CryptoErrorCode : byte
+{
+    InvalidPublicKey = 100,
+    InvalidSecretKey = 101,
+    InvalidKey = 102,
+    InvalidFactorizeChallenge = 106,
+    InvalidBigInt = 107,
+    ScryptFailed = 108,
+    InvalidKeySize = 109,
+    NaclSecretBoxFailed = 110,
+    NaclBoxFailed = 111,
+    NaclSignFailed = 112,
+    Bip39InvalidEntropy = 113,
+    Bip39InvalidPhrase = 114,
+    Bip32InvalidKey = 115,
+    Bip32InvalidDerivePath = 116,
+    Bip39InvalidDictionary = 117,
+    Bip39InvalidWordCount = 118,
+    MnemonicGenerationFailed = 119,
+    MnemonicFromEntropyFailed = 120,
+    SigningBoxNotRegistered = 121,
+    InvalidSignature = 122,
+    EncryptionBoxNotRegistered = 123,
+    InvalidIvSize = 124,
+    UnsupportedCipherMode = 125,
+    CannotCreateCipher = 126,
+    EncryptDataError = 127,
+    DecryptDataError = 128,
+    IvRequired = 129,
+    CryptoBoxNotRegistered = 130,
+    InvalidCryptoBoxType = 131,
+    CryptoBoxSecretSerializationError = 132,
+    CryptoBoxSecretDeserializationError = 133,
+    InvalidNonceSize = 134
+}

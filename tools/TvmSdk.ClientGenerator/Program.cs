@@ -1,4 +1,5 @@
-﻿using Microsoft.CodeAnalysis.CSharp;
+﻿using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using TvmSdk.ApiModels;
 using TvmSdk.ClientGenerator.Extensions;
@@ -13,18 +14,153 @@ internal abstract class Program
 {
     private static async Task Main(string[] args)
     {
-        if (args.Length == 1)
-            Directory.SetCurrentDirectory(args[0]);
-        
-        const string projectName = "TvmSdk";
         var currentPath = AppDomain.CurrentDomain.BaseDirectory;
-        var projectPath = Path.Combine(currentPath, "../../../../../src");
+        var projectName = $"TvmSdk";
+        var apiFilePath = "api.json";
+
+        args = args
+            .Where(x => !string.IsNullOrWhiteSpace(x))
+            .ToArray();
+        if (args.Length == 3)
+        {
+            if (!string.IsNullOrWhiteSpace(args[0]))
+                currentPath = args[0];
+
+            if (!string.IsNullOrWhiteSpace(args[1]))
+                projectName = args[1];
+
+            if (!string.IsNullOrWhiteSpace(args[2]))
+                apiFilePath = args[2];
+        }
+        Console.WriteLine($"Generating client '{projectName}' from '{apiFilePath}', please wait.");
+        
+        var projectPath = Path.Combine(currentPath, $"../../src/clients/");
         var outputPath = $"{projectPath}/{projectName}/Modules";
-        var everApi = await JsonUtil.DeserializeFile<API>("api.json");
+        var everApi = await JsonUtil.DeserializeFile<API>(apiFilePath);
 
         if (Directory.Exists(outputPath))
             Directory.Delete(outputPath, true);
+        
+        
+        var clientName = projectName;
+        var projectNameSplitted = projectName.Split('.');
 
+        if (projectNameSplitted.Length == 2)
+            clientName = projectNameSplitted[1];
+
+        clientName = $"{clientName}Client";
+        var client = Syntax.Declaration
+            .Class(clientName)
+            .Public()
+            .AddBaseListTypes(SimpleBaseType(IdentifierName($"I{clientName}")));
+        
+        // Create a new constructor with parameters
+        var ctor = ConstructorDeclaration(Identifier(clientName))
+            .Public()
+            .AddParameterListParameters(
+                Parameter(Identifier("adapter"))
+                    .WithType(ParseTypeName("ITvmSdkDllAdapter")));
+            
+        everApi.Modules
+            .ToList()
+            .ForEach(module =>
+            {
+                ctor = ctor
+                    .AddParameterListParameters(
+                        Parameter(Identifier($"{module.Name}Module"))
+                            .WithType(NullableType(ParseTypeName($"I{module.Name.ToPascalCase()}Module")))
+                            .WithDefault(EqualsValueClause(LiteralExpression(SyntaxKind.NullLiteralExpression)))
+                    );
+            });
+
+        var assignments = everApi.Modules
+            .Select(module => 
+                ExpressionStatement(
+                    AssignmentExpression(
+                        SyntaxKind.SimpleAssignmentExpression,
+                        IdentifierName(module.Name.ToPascalCase()),
+                        BinaryExpression(
+                            SyntaxKind.CoalesceExpression,
+                            IdentifierName($"{module.Name}Module"),
+                            ObjectCreationExpression(
+                                IdentifierName($"{module.Name.ToPascalCase()}Module"))
+                                .WithArgumentList(
+                                    ArgumentList(
+                                        SeparatedList<ArgumentSyntax>(
+                                            new[]
+                                            {
+                                                Argument(IdentifierName("adapter"))
+                                            })))))) as StatementSyntax)
+            .ToArray();
+        
+        ctor = ctor
+            .AddBodyStatements(assignments);
+        
+        // // Create a nullable context directive
+        // var nullableDirective = Trivia(PreprocessorDirectiveTrivia(
+        //     Token(SyntaxKind.HashToken),
+        //     Token(SyntaxKind.NullableKeyword),
+        //     Token(SyntaxKind.EnableKeyword),
+        //     Token(SyntaxKind.EndOfLineTrivia),
+        //     isActive: true
+        // ));
+        
+        var clientCompilationUnit = client
+            .AddMembers(everApi.Modules
+                .Select(module =>
+                    Syntax.Declaration.Member
+                        .Property(
+                            $"I{module.Name.ToPascalCase()}Module",
+                            module.Name.ToPascalCase())
+                        .Public() as MemberDeclarationSyntax
+                )
+                .ToArray())
+            .AddMembers(ctor)
+            .ToFileScopedNamespace(projectName)
+            .ToCompilationUnit()
+            .AddUsings("TvmSdk.DllAdapter");
+        
+        everApi.Modules
+            .ToList()
+            .ForEach(module =>
+            {
+                clientCompilationUnit = clientCompilationUnit
+                    .AddUsings($"{projectName}.Modules.{module.Name.ToPascalCase()}");
+            });
+        
+        clientCompilationUnit
+            .WriteTo($"{projectPath}/{projectName}/{clientName}.Generated.cs");
+        
+        // Interface
+        
+        var interfaceCompilationUnit = Syntax.Declaration
+            .Interface($"I{clientName}")
+            .Public()
+            // .AddSummary(module.Summary)
+            // .AddRemarks(module.Description)
+            .AddMembers(everApi.Modules
+                .Select(module =>
+                    Syntax.Declaration.Member
+                        .Property(
+                            $"I{module.Name.ToPascalCase()}Module",
+                            module.Name.ToPascalCase())as MemberDeclarationSyntax
+                )
+                .ToArray())
+            .ToFileScopedNamespace(projectName)
+            .ToCompilationUnit();
+            
+        everApi.Modules
+            .ToList()
+            .ForEach(module =>
+            {
+                interfaceCompilationUnit = interfaceCompilationUnit
+                    .AddUsings($"{projectName}.Modules.{module.Name.ToPascalCase()}");
+            });
+            
+        interfaceCompilationUnit.WriteTo($"{projectPath}/{projectName}/I{clientName}.Generated.cs");
+
+        
+        
         var typeNamespaceLookup = everApi.Modules
             .SelectMany(module =>
                 module.Types
@@ -78,8 +214,10 @@ internal abstract class Program
                 .ForEach(GeneratePolymorphicRecord(module));
 
             GenerateModuleInterface(module);
-            GenerateModuleClass(module, "ITvmClient");
+            GenerateModuleClass(module);
         }
+        
+        Console.WriteLine("Done!");
 
         return;
 
@@ -88,7 +226,9 @@ internal abstract class Program
             var typeNamespace = typeNamespaceLookup[model.Name];
             using var file = new FileWriter(typeNamespace.Filepath);
 
-            Syntax.Declaration.Enum(model.Name)
+            var isNumberEnum = model.EnumConsts.All(x => x is ApiEnumConst.Number);
+            var @enum = Syntax.Declaration
+                .Enum(model.Name)
                 .Public()
                 .AddSummary(model.Summary)
                 .AddRemarks(model.Description)
@@ -105,8 +245,18 @@ internal abstract class Program
                         Summary = x.Summary,
                         Remarks = x.Description
                     })
-                    .ToList())
+                    .ToList());
+
+            if (!isNumberEnum)
+            {
+                @enum = @enum
+                    .AddAttribute("JsonConverter",
+                        ("JsonStringEnumConverter", "", SyntaxKind.TypeOfKeyword));
+            }
+                    
+            @enum
                 .ToFileScopedNamespace(typeNamespace.Namespace)
+                .ToCompilationUnit()
                 .Format()
                 .WriteTo(file.StreamWriter);
         }
@@ -171,10 +321,10 @@ internal abstract class Program
                     );
                 });
 
-                compilationUnit
-                    .AddUsings("System.Text.Json.Serialization") // TODO: Move to globalusings?
-                    .AddMembers(
-                        polymorphic.ToFileScopedNamespace(typeNamespace.Namespace))
+                polymorphic
+                    .ToFileScopedNamespace(typeNamespace.Namespace)
+                    .ToCompilationUnit()
+                    .AddUsings("System.Text.Json.Serialization")
                     .Format()
                     .WriteTo(file.StreamWriter);
             };
@@ -198,14 +348,14 @@ internal abstract class Program
                 .WriteTo($"{projectPath}/{projectName}/Modules/{module.Name.ToPascalCase()}/I{moduleName}.Generated.cs");
         }
 
-        void GenerateModuleClass(ApiModule module, string clientInterfaceName)
+        void GenerateModuleClass(ApiModule module)
         {
             var moduleName = $"{module.Name.ToPascalCase()}Module";
             Syntax.Declaration
                 .Class(moduleName)
                 .AddParameterListParameters(
-                    Parameter(Identifier("client"))
-                        .WithType(ParseTypeName(clientInterfaceName))
+                    Parameter(Identifier("adapter"))
+                        .WithType(ParseTypeName("ITvmSdkDllAdapter"))
                 )
                 .Public()
                 .AddBaseListTypes(SimpleBaseType(IdentifierName($"I{moduleName}")))
@@ -215,6 +365,7 @@ internal abstract class Program
                     .Select(function => function.Method(module.Name) as MemberDeclarationSyntax).ToArray())
                 .ToFileScopedNamespace($"{projectName}.Modules.{module.Name.ToPascalCase()}")
                 .ToCompilationUnit()
+                .AddUsings("TvmSdk.DllAdapter")
                 .WriteTo($"{projectPath}/{projectName}/Modules/{module.Name.ToPascalCase()}/{moduleName}.Generated.cs");
         }
     }

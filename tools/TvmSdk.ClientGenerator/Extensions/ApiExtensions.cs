@@ -157,34 +157,37 @@ public static class ApiExtensions
     
     public static StatementSyntax MethodStatement(this ApiFunction function, string moduleName)
     {
-        const string clientVariableName = "client";
-        const string clientMethodName = "CallFunction";
+        const string adapterVariableName = "adapter";
+        const string adapterMethodName = "CallMethod";
         var result = function.Result.CSharpType(moduleName);
+        var @params = function.Params
+            // TODO: Review if you can handle this filter in other way and why this 'Generic is needed after all?
+            .Where(param => param is not ApiModelProperty.Generic)
+            .ToArray();
         var clientInvocation = result == null
             ? MemberAccessExpression(
                 SyntaxKind.SimpleMemberAccessExpression,
-                IdentifierName(clientVariableName),
-                IdentifierName(clientMethodName))
+                IdentifierName(adapterVariableName),
+                IdentifierName(adapterMethodName))
             : MemberAccessExpression(
                 SyntaxKind.SimpleMemberAccessExpression,
-                IdentifierName(clientVariableName),
-                GenericName("CallFunction")
+                IdentifierName(adapterVariableName),
+                GenericName(adapterMethodName)
                     .WithTypeArgumentList(
                         TypeArgumentList(
-                            SingletonSeparatedList<TypeSyntax>(
-                                IdentifierName(result)))));
+                            SeparatedList<TypeSyntax>(
+                                @params
+                                    .Select(param => IdentifierName(param.CSharpType(moduleName)!))
+                                    .ToList()
+                                    .Append(IdentifierName(result))))));
         var methodExpression = InvocationExpression(clientInvocation)
             .WithArgumentList(
                 ArgumentList(
-                    SeparatedList(function.Params
-                        .Where(x =>
-                            x is not ApiModelProperty
-                                .Generic) // TODO: Review if you can handle this filter in other way and why this 'Generic is needed after all?
-                        .Select(param =>
+                    SeparatedList(@params
+                        .Select(param => 
                             Argument(
-                                IdentifierName(param.ToSafeCSharpName())
-                            )
-                        )
+                                IdentifierName(
+                                    param.ToSafeCSharpName())))
                         .ToList()
                         .Prepend(Argument(
                             LiteralExpression(
